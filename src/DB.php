@@ -57,7 +57,7 @@ class DB
         return Connect::db(DB::$key)->prepare(MySQL::delete($table, $condition), $prep)->rowCount();
     }
 
-    public function select($table, $condition, $prep = [], $field = '*', $gol = [], $joins = [])
+    public function select($table, $condition, $field = '*', $prep = [], $gol = [], $joins = [])
     {
         return new Fetch(
             MySQL::select($table, $condition, $field, $gol, $joins),
