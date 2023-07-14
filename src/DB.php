@@ -8,13 +8,7 @@ use LiteView\SQL\Sentence\MySQL;
 
 class DB
 {
-    public static $key;
-
-    public static function cursor($key = 'mysql')
-    {
-        self::$key = $key;
-        return Connect::db(self::$key);
-    }
+    private static $key;
 
     public static function crud($key = 'mysql')
     {
@@ -46,15 +40,15 @@ class DB
         $ignore = $ignore ? 'ignore' : '';
         return Connect::db(DB::$key)->exec(MySQL::insert($table, $data, $ignore), true); //返回插入ID
     }
-
-    public function update($table, $data, $condition, $prep = [])
-    {
-        return Connect::db(DB::$key)->prepare(MySQL::update($table, $data, $condition), $prep)->rowCount();
-    }
-
+    
     public function delete($table, $condition, $prep = [])
     {
         return Connect::db(DB::$key)->prepare(MySQL::delete($table, $condition), $prep)->rowCount();
+    }
+    
+    public function update($table, $data, $condition, $prep = [])
+    {
+        return Connect::db(DB::$key)->prepare(MySQL::update($table, $data, $condition), $prep)->rowCount();
     }
 
     public function select($table, $condition, $field = '*', $prep = [], $gol = [], $joins = [])
