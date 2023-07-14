@@ -1,5 +1,6 @@
 .git
 .idea
+composer.lock
 vendor
 storage
 config.json

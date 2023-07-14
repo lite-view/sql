@@ -42,7 +42,7 @@ class MySQL
         return $statement;
     }
 
-    public static function select($tableName, $condition, $field = '*', $gol = null, $joins = [])
+    public static function select($tableName, $condition, $field = '*', $gol = [], $joins = [])
     {
         //书写顺序：SELECT -> FROM -> JOIN -> ON -> WHERE -> GROUP BY -> HAVING -> UNION -> ORDER BY ->LIMIT
         $join_str = '';
@@ -52,6 +52,9 @@ class MySQL
         $statement = "SELECT $field FROM $tableName $join_str WHERE $condition";
         if (isset($gol['group'])) {
             $statement .= " GROUP BY {$gol['group']}";
+        }
+        if (isset($gol['having'])) {
+            $statement .= " HAVING {$gol['having']}";
         }
         if (isset($gol['order'])) {
             $statement .= " ORDER BY {$gol['order']}";

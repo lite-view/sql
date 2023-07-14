@@ -1,7 +1,8 @@
 <?php
 
 
-use LiteView\SQL\DB;
+use LiteView\SQL\Crud;
+
 
 require __DIR__ . '/vendor/autoload.php';
 
@@ -33,17 +34,18 @@ require __DIR__ . '/vendor/autoload.php';
 //];
 
 
-$r = DB::cursor()->query('select version()')->fetch();
+$r = \LiteView\SQL\Connect::db()->query('select version()')->fetch();
 print_r($r);
-$r = DB::crud()->select('users', '1')->all();
+$r = Crud::db()->updateOrInsert('users', ['id' => 11]);
 print_r($r);
-$r = DB::crud()->select('users', '1')->one();
+$r = Crud::db()->update('users', ['name' => time()], 'id = 11');
 print_r($r);
-$r = DB::crud()->select('users', '1')->paginate(10);
+$r = Crud::db()->insert('users', ['name' => 'xxx']);
 print_r($r);
-$r = DB::crud()->updateOrInsert('users', ['id' => 11]);
+//
+$r = Crud::db()->select('users', '1')->prep()->all();
 print_r($r);
-$r = DB::crud()->update('users', ['name' => time()], 'id = 11');
+$r = Crud::db()->select('users', '1')->prep()->one();
 print_r($r);
-$r = DB::crud()->insert('users', ['name' => 'xxx']);
+$r = Crud::db()->select('users', '1')->prep()->paginate(10);
 print_r($r);
