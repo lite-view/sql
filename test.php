@@ -34,18 +34,17 @@ require __DIR__ . '/vendor/autoload.php';
 //];
 
 
-$r = \LiteView\SQL\Connect::db()->query('select version()')->fetch();
-print_r($r);
-$r = Crud::db()->updateOrInsert('users', ['id' => 11]);
-print_r($r);
-$r = Crud::db()->update('users', ['name' => time()], 'id = 11');
-print_r($r);
-$r = Crud::db()->insert('users', ['name' => 'xxx']);
-print_r($r);
-//
-$r = Crud::db()->select('users', '1')->prep()->all();
-print_r($r);
-$r = Crud::db()->select('users', '1')->prep()->one();
-print_r($r);
-$r = Crud::db()->select('users', '1')->prep()->paginate(10);
-print_r($r);
+echo \LiteView\SQL\Sentence\MySQL::select('users m', 'm.id = 1', '*', [], [['table' => 'users u', 'on' => 'm.pid = u.id']]);
+echo ';',PHP_EOL;
+echo \LiteView\SQL\Sentence\MySQL::select('users m', 'm.id = 1');
+echo ';',PHP_EOL;
+echo \LiteView\SQL\Sentence\MySQL::delete('users', 'id = 1');
+echo ';',PHP_EOL;
+echo \LiteView\SQL\Sentence\MySQL::insert('users', ['name' => 'aa', 'num' => null]);
+echo ';',PHP_EOL;
+echo \LiteView\SQL\Sentence\MySQL::update('users', ['name' => 'bb', 'num' => null], 'id = 20');
+echo ';',PHP_EOL;
+echo \LiteView\SQL\Sentence\MySQL::update('users', ['name' => 'cc', 'num' => 5], 'id > 0', 1);
+echo ';',PHP_EOL;
+echo \LiteView\SQL\Sentence\MySQL::update('users', ['name' => 'dd', 'num' => null], 'id > 0', 1, 'id desc');
+echo ';',PHP_EOL;
