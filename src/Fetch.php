@@ -19,6 +19,11 @@ class Fetch
         $this->db = $db;
     }
 
+    public function getSentence(): array
+    {
+        return [$this->sentence, $this->params];
+    }
+
     public function column($column = 0)
     {
         return $this->db->prepare($this->sentence, $this->params)->fetchColumn($column);
