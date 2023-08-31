@@ -19,11 +19,6 @@ class Fetch
         $this->db = $db;
     }
 
-    public function getSentence(): array
-    {
-        return [$this->sentence, $this->params];
-    }
-
     public function column($column = 0)
     {
         return $this->db->prepare($this->sentence, $this->params)->fetchColumn($column);
@@ -34,7 +29,7 @@ class Fetch
         return $this->db->prepare($this->sentence, $this->params)->fetch();
     }
 
-    public function all($limit = null)
+    public function all($limit = null): array
     {
         if (!is_null($limit)) {
             $this->sentence .= " LIMIT $limit";
@@ -42,7 +37,7 @@ class Fetch
         return $this->db->prepare($this->sentence, $this->params)->fetchAll();
     }
 
-    public function paginate($limit, $pageName = 'page', $page = null)
+    public function paginate($limit, $pageName = 'page', $page = null): array
     {
         if (is_null($page)) {
             $page = 1;
@@ -66,5 +61,23 @@ class Fetch
             ],
             'list' => $this->db->prepare($this->sentence, $this->params)->fetchAll(),
         ];
+    }
+
+    public function prepare()
+    {
+        $prepare = "PREPARE stmt FROM '{$this->sentence}'";
+
+        $params = [];
+        foreach ($this->params as $k => $v) {
+            $params[] = "@$k = '$v'";
+        }
+
+        $set = 'SET ' . implode(',', $params);
+
+        $execute = 'EXECUTE stmt';
+        if ($params) {
+            $execute .= " USING " . implode(',', array_keys($params));
+        }
+        return [$prepare, $set, $execute];
     }
 }
