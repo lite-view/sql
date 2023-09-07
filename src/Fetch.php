@@ -63,21 +63,29 @@ class Fetch
         ];
     }
 
-    public function prepare()
+    public function getRawStatement($format = false)
     {
-        $prepare = "PREPARE stmt FROM '{$this->sentence}'";
-
-        $params = [];
+        $stmt = "PREPARE stmt FROM '{$this->sentence}'";
+        $set = null;
+        $using = null;
         foreach ($this->params as $k => $v) {
-            $params[] = "@$k = '$v'";
+            $set[] = "@param$k = '$v'";
+            $using[] = "@param$k";
         }
-
-        $set = 'SET ' . implode(',', $params);
-
-        $execute = 'EXECUTE stmt';
-        if ($params) {
-            $execute .= " USING " . implode(',', array_keys($params));
+        if ($set) {
+            $set = 'SET ' . implode(',', $set);
         }
-        return [$prepare, $set, $execute];
+        if ($using) {
+            $using = implode(',', $using);
+        }
+        $execute = "EXECUTE stmt USING $using";
+        $deallocate = "DEALLOCATE PREPARE stmt";
+        $com = compact('stmt', 'set', 'execute', 'deallocate');
+        if ($format) {
+            return implode(";\n", array_values($com));
+        }
+        $com['sentence'] = $this->sentence;
+        $com['params'] = $this->params;
+        return $com;
     }
 }
