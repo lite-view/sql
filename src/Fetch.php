@@ -12,6 +12,19 @@ class Fetch
     private $params;
     private $db;
 
+    private function getCountForPagination(): int
+    {
+        $sql = preg_replace('/SELECT (.+?) FROM/', 'SELECT count(1) as num FROM', $this->sentence, 1);
+        $results = $this->db->prepare($sql, $this->params)->fetchAll();
+        if (count($results) > 1) {
+            return count($results);
+        }
+        if (isset($results[0])) {
+            return (int)$results[0]['num'];
+        }
+        return 0;
+    }
+
     public function __construct(string $sentence, array $params, Cursor $db)
     {
         $this->sentence = $sentence;
@@ -46,10 +59,7 @@ class Fetch
             }
         }
 
-        $count = $this->db->prepare(
-            preg_replace('/SELECT (.+?) FROM/', 'SELECT count(1) as num FROM', $this->sentence, 1),
-            $this->params
-        )->fetch()['num'];
+        $count = $this->getCountForPagination();
         $start = ($page - 1) * $limit;
         $this->sentence .= " LIMIT $start,$limit";
         return [
