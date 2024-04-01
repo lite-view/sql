@@ -15,7 +15,7 @@ class GOLBuild
     private $joins;
     private $gol;
 
-    public function __construct($cursor, $table, $condition, $field, $joins)
+    public function __construct(Cursor $cursor, $table, $condition, $field, $joins)
     {
         $this->cursor = $cursor;
         $this->table = $table;
@@ -45,6 +45,12 @@ class GOLBuild
     public function limit($limit)
     {
         $this->gol['limit'] = $limit;
+        return $this;
+    }
+
+    public function fu()
+    {
+        $this->gol['fu'] = 'FOR UPDATE';
         return $this;
     }
 

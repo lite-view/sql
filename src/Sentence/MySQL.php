@@ -53,7 +53,7 @@ class MySQL
 
     public static function select($tableName, $condition, $field = '*', $gol = [], $joins = []): string
     {
-        //书写顺序：SELECT -> FROM -> JOIN -> ON -> WHERE -> GROUP BY -> HAVING -> UNION -> ORDER BY -> LIMIT
+        //书写顺序：SELECT -> FROM -> JOIN -> ON -> WHERE -> GROUP BY -> HAVING -> UNION -> ORDER BY -> LIMIT -> FOR UPDATE
         $leftJoin = '';
         foreach ($joins as $item) {
             $leftJoin .= "LEFT JOIN {$item['table']} ON {$item['on']} ";
@@ -70,6 +70,9 @@ class MySQL
         }
         if (isset($gol['limit'])) {
             $statement .= " LIMIT {$gol['limit']}";
+        }
+        if (isset($gol['fu'])) {
+            $statement .= " {$gol['fu']}";
         }
         return $statement;
     }
