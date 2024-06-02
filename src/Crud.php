@@ -35,6 +35,11 @@ class Crud
         return [-1, -1];
     }
 
+    public function insertAll($table, $data, $needLastInsertId = true)
+    {
+        return Connect::db(Crud::$key)->exec(MySQL::insertAll($table, $data), $needLastInsertId);
+    }
+
     public function insert($table, $data, $ignore = false)
     {
         return Connect::db(Crud::$key)->exec(MySQL::insert($table, $data, $ignore), true); //返回插入ID

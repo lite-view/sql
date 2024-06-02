@@ -6,6 +6,30 @@ namespace LiteView\SQL\Sentence;
 
 class MySQL
 {
+    public static function insertAll($tableName, $data)
+    {
+        $fields = '';
+        foreach ($data[0] as $key => $nil) {
+            $fields .= "`$key`,";
+        }
+        $fields = substr($fields, 0, -1);
+        $sentence = "INSERT INTO $tableName ($fields) VALUES ";
+        foreach ($data as $row) {
+            $values = '';
+            foreach ($row as $value) {
+                if (is_null($value)) {
+                    $values .= 'NULL,';
+                } else {
+                    $value = addslashes($value);
+                    $values .= "\"$value\",";
+                }
+            }
+            $values = substr($values, 0, -1);
+            $sentence .= "($values),";
+        }
+        return substr($sentence, 0, -1);
+    }
+
     public static function insert($tableName, $data, $ignore = false): string
     {
         $fields = '';
@@ -42,14 +66,14 @@ class MySQL
             }
         }
         $set = substr($set, 0, -1);
-        $statement = "UPDATE $tableName SET $set WHERE $condition";
+        $sentence = "UPDATE $tableName SET $set WHERE $condition";
         if (!is_null($order)) {
-            $statement .= " ORDER BY $order";
+            $sentence .= " ORDER BY $order";
         }
         if (!is_null($limit)) {
-            $statement .= " LIMIT $limit";
+            $sentence .= " LIMIT $limit";
         }
-        return $statement;
+        return $sentence;
     }
 
     public static function select($tableName, $condition, $field = '*', $gol = [], $joins = []): string
@@ -59,22 +83,22 @@ class MySQL
         foreach ($joins as $item) {
             $leftJoin .= "LEFT JOIN {$item['table']} ON {$item['on']} ";
         }
-        $statement = "SELECT $field FROM $tableName $leftJoin WHERE $condition";
+        $sentence = "SELECT $field FROM $tableName $leftJoin WHERE $condition";
         if (isset($gol['group'])) {
-            $statement .= " GROUP BY {$gol['group']}";
+            $sentence .= " GROUP BY {$gol['group']}";
         }
         if (isset($gol['having'])) {
-            $statement .= " HAVING {$gol['having']}";
+            $sentence .= " HAVING {$gol['having']}";
         }
         if (isset($gol['order'])) {
-            $statement .= " ORDER BY {$gol['order']}";
+            $sentence .= " ORDER BY {$gol['order']}";
         }
         if (isset($gol['limit'])) {
-            $statement .= " LIMIT {$gol['limit']}";
+            $sentence .= " LIMIT {$gol['limit']}";
         }
         if (isset($gol['fu'])) {
-            $statement .= " {$gol['fu']}";
+            $sentence .= " {$gol['fu']}";
         }
-        return $statement;
+        return $sentence;
     }
 }
