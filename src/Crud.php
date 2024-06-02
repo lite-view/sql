@@ -24,20 +24,19 @@ class Crud
             $condition .= "`$f` = \"$v\" AND ";
         }
         $condition = substr($condition, 0, -5);
-
         $exists = Connect::db(Crud::$key)->query("SELECT count(1) as cnt FROM $table WHERE $condition")->fetchColumn();
         if (!$exists) {
-            return $this->insert($table, array_merge($index, $values), true);
+            // 会有幻读的重复插入的风险，使用唯一索引可以避免
+            return [0, $this->insert($table, array_merge($index, $values), true)];
         }
         if ($values) {
-            return $this->update($table, $values, $condition);
+            return [1, $this->update($table, $values, $condition)];
         }
-        return 0;
+        return [-1, -1];
     }
 
     public function insert($table, $data, $ignore = false)
     {
-        $ignore = $ignore ? 'ignore' : '';
         return Connect::db(Crud::$key)->exec(MySQL::insert($table, $data, $ignore), true); //返回插入ID
     }
 

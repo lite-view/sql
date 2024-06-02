@@ -6,7 +6,7 @@ namespace LiteView\SQL\Sentence;
 
 class MySQL
 {
-    public static function insert($tableName, $data, $ignore = ''): string
+    public static function insert($tableName, $data, $ignore = false): string
     {
         $fields = '';
         $values = '';
@@ -21,6 +21,7 @@ class MySQL
         }
         $fields = substr($fields, 0, -1);
         $values = substr($values, 0, -1);
+        $ignore = $ignore ? 'IGNORE' : '';
         return "INSERT $ignore INTO $tableName ($fields) VALUES($values)";
     }
 
