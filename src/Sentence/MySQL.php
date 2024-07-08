@@ -79,11 +79,24 @@ class MySQL
     public static function select($tableName, $condition, $field = '*', $gol = [], $joins = []): string
     {
         //书写顺序：SELECT -> FROM -> JOIN -> ON -> WHERE -> GROUP BY -> HAVING -> UNION -> ORDER BY -> LIMIT -> FOR UPDATE
-        $leftJoin = '';
+        $joinStr = '';
         foreach ($joins as $item) {
-            $leftJoin .= "LEFT JOIN {$item['table']} ON {$item['on']} ";
+            $join_table = $item['table'] ?? $item[0];
+            $join_type = 'LEFT JOIN';
+            if (isset($item['type'])) {
+                $join_type = $item['type'];
+            } else if (isset($item[2])) {
+                $join_type = $item[2];
+            }
+
+            $joinStr .= "$join_type $join_table ";
+            if (isset($item['on'])) {
+                $joinStr .= "ON {$item['on']} ";
+            } else if (isset($item[1])) {
+                $joinStr .= "ON {$item[1]} ";
+            }
         }
-        $sentence = "SELECT $field FROM $tableName $leftJoin WHERE $condition";
+        $sentence = "SELECT $field FROM $tableName $joinStr WHERE $condition";
         if (isset($gol['group'])) {
             $sentence .= " GROUP BY {$gol['group']}";
         }
