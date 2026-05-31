@@ -57,7 +57,7 @@ class Crud
     public function update($table, $data, $condition, $prep = [])
     {
         $sql = SentenceFactory::update($table, $data, $condition);
-        return Connect::db(Crud::$key)->prepare(MySQL::update($table, $data, $condition), $prep)->rowCount();
+        return Connect::db(Crud::$key)->prepare($sql, $prep)->rowCount();
     }
 
     public function select($table, $condition, $field = '*', $joins = [])
