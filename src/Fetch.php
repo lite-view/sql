@@ -8,46 +8,33 @@ namespace LiteView\SQL;
 
 class Fetch
 {
-    private $sentence;
+    private $builder;
     private $params;
     private $db;
 
-    private function getCountForPagination(): int
+    public function __construct($builder, array $params, Cursor $db)
     {
-        $sql = preg_replace('/SELECT (.+?) FROM/', 'SELECT count(1) as num FROM', $this->sentence, 1);
-        $results = $this->db->prepare($sql, $this->params)->fetchAll();
-        if (count($results) > 1) {
-            return count($results);
-        }
-        if (isset($results[0])) {
-            return (int)$results[0]['num'];
-        }
-        return 0;
-    }
-
-    public function __construct(string $sentence, array $params, Cursor $db)
-    {
-        $this->sentence = $sentence;
-        $this->params = $params;
-        $this->db = $db;
+        $this->builder = $builder;
+        $this->params  = $params;
+        $this->db      = $db;
     }
 
     public function column($column = 0)
     {
-        return $this->db->prepare($this->sentence, $this->params)->fetchColumn($column);
+        $sentence = $this->builder->build();
+        return $this->db->prepare($sentence, $this->params)->fetchColumn($column);
     }
 
     public function one()
     {
-        return $this->db->prepare($this->sentence, $this->params)->fetch();
+        $sentence = $this->builder->build();
+        return $this->db->prepare($sentence, $this->params)->fetch();
     }
 
     public function all($limit = null): array
     {
-        if (!is_null($limit)) {
-            $this->sentence .= " LIMIT $limit";
-        }
-        return $this->db->prepare($this->sentence, $this->params)->fetchAll();
+        $sentence = $this->builder->limt($limit)->build();
+        return $this->db->prepare($sentence, $this->params)->fetchAll();
     }
 
     public function paginate($limit, $pageName = 'page', $page = null): array
@@ -59,27 +46,35 @@ class Fetch
             }
         }
 
-        $count = $this->getCountForPagination();
-        $start = ($page - 1) * $limit;
-        $this->sentence .= " LIMIT $start,$limit";
+        $count    = $this->getCountForPagination();
+        $offset   = ($page - 1) * $limit;
+        $sentence = $this->builder->limit($limit, $offset)->build();
         return [
             'paging' => [
-                'total' => $count,                   //数据总条数
-                'pageSize' => $limit,                //每页显示条数
+                'total'       => $count,                   //数据总条数
+                'pageSize'    => $limit,                //每页显示条数
                 'currentPage' => $page,              //当前页
-                'pageCount' => ceil($count / $limit),//总页数
+                'pageCount'   => ceil($count / $limit),//总页数
             ],
-            'list' => $this->db->prepare($this->sentence, $this->params)->fetchAll(),
+            'list'   => $this->db->prepare($sentence, $this->params)->fetchAll(),
         ];
+    }
+
+    private function getCountForPagination(): int
+    {
+        $builder  = clone $this->builder;
+        $sentence = $builder->count();
+        return $this->db->prepare($sentence, $this->params)->fetchColumn();
     }
 
     public function getRawStatement($format = false)
     {
-        $stmt = "PREPARE stmt FROM '{$this->sentence}'";
-        $set = null;
-        $using = null;
+        $sentence = $this->builder->build();
+        $stmt     = "PREPARE stmt FROM '{$sentence}'";
+        $set      = null;
+        $using    = null;
         foreach ($this->params as $k => $v) {
-            $set[] = "@param$k = '$v'";
+            $set[]   = "@param$k = '$v'";
             $using[] = "@param$k";
         }
         if ($set) {
@@ -88,14 +83,14 @@ class Fetch
         if ($using) {
             $using = implode(',', $using);
         }
-        $execute = "EXECUTE stmt USING $using";
+        $execute    = "EXECUTE stmt USING $using";
         $deallocate = "DEALLOCATE PREPARE stmt";
-        $com = compact('stmt', 'set', 'execute', 'deallocate');
+        $com        = compact('stmt', 'set', 'execute', 'deallocate');
         if ($format) {
             return implode(";\n", array_values($com));
         }
-        $com['sentence'] = $this->sentence;
-        $com['params'] = $this->params;
+        $com['sentence'] = $sentence;
+        $com['params']   = $this->params;
         return $com;
     }
 }

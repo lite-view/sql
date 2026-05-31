@@ -69,11 +69,10 @@ class Crud
 
     public function select($table, $condition, $field = '*', $joins = [], $prep = [])
     {
-        $builder = SentenceFactory::select($table, $field);
+        $builder = SentenceFactory::select($table, $field)->where($condition);
         foreach ($joins as $join) {
             $builder->join($join['table'], $join['on'], $join['way'] ?? 'left');
         }
-        $sql = $builder->where($condition)->build();
-        return new Fetch($sql, $prep, Connect::db($this->key));
+        return new Fetch($builder, $prep, Connect::db($this->key));
     }
 }

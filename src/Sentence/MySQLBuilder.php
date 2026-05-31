@@ -118,6 +118,21 @@ class MySQLBuilder
         return $this;
     }
 
+    public function count($fields = '*'): string
+    {
+        $join_str = '';
+        if ($this->joins) {
+            foreach ($this->joins as $item) {
+                $join_str .= "{$item['way']} JOIN {$item['table']} ON {$item['on']} ";
+            }
+        }
+        $sql = ['SELECT', "count($fields)", 'FROM', $this->table, $join_str, $this->condition];
+        if ($this->is_for_update) {
+            $sql[] = "FOR UPDATE";
+        }
+        return implode(',', $sql);
+    }
+
     public function build(): string
     {
         if ($this->intent == 'select') {
