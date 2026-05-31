@@ -4,48 +4,50 @@
 namespace LiteView\SQL;
 
 
-use LiteView\SQL\Sentence\MySQLBuilder;
 use LiteView\SQL\Sentence\SentenceFactory;
 
 class Crud
 {
     private static $key;
-    private static $builder;
 
     public static function db($key = 'mysql'): Crud
     {
-        self::$key     = $key;
-        self::$builder = MySQLBuilder::class;
+        self::$key = $key;
         return new self();
     }
 
     public function updateOrInsert($table, $index, $values = [])
     {
-        $condition = '';
+        $where = [];
+        $prep  = [];
         foreach ($index as $f => $v) {
-            $v         = addslashes($v);
-            $condition .= "`$f` = \"$v\" AND ";
+            $where[] = "`$f` = ?";
+            $prep[]  = $v;
         }
-        $condition = substr($condition, 0, -5);
-        $exists    = Connect::db(Crud::$key)->query("SELECT count(1) as cnt FROM $table WHERE $condition")->fetchColumn();
+        $condition = implode(' AND ', $where);
+        $sql       = SentenceFactory::select($table, 'count(1) as cnt');
+        $exists    = Connect::db(Crud::$key)->prepare($sql, $prep)->fetchColumn();
         if (!$exists) {
             // 会有幻读的重复插入的风险，使用唯一索引可以避免
             return [0, $this->insert($table, array_merge($index, $values), true)];
         }
         if ($values) {
-            return [1, $this->update($table, $values, $condition)];
+            return [1, $this->update($table, $values, $condition, $prep)];
         }
         return [-1, -1];
     }
 
     public function insertAll($table, $data, $needLastInsertId = true)
     {
-        return Connect::db(Crud::$key)->exec(MySQL::insertAll($table, $data), $needLastInsertId);
+        $sql = SentenceFactory::insert($table, $data);
+        return Connect::db(Crud::$key)->exec($sql, $needLastInsertId);
     }
 
     public function insert($table, $data, $ignore = false)
     {
-        return Connect::db(Crud::$key)->exec(MySQL::insert($table, $data, $ignore), true); //返回插入ID
+        $mode = $ignore ? 'ignore' : 'insert';
+        $sql  = SentenceFactory::insert($table, $data, $mode);
+        return Connect::db(Crud::$key)->exec($sql, true); //返回插入ID
     }
 
     public function delete($table, $condition, $prep = [])
@@ -60,11 +62,9 @@ class Crud
         return Connect::db(Crud::$key)->prepare($sql, $prep)->rowCount();
     }
 
-    public function select($table, $condition, $field = '*', $joins = [])
+    public function select($table, $condition, $field = '*', $joins = [], $prep = [])
     {
-
-        Crud::$builder::select($table, $condition, $field, $joins);
-
-        return new GOLBuild(Connect::db(Crud::$key), $table, $condition, $field, $joins);
+        $sql = SentenceFactory::select($table, $condition, $field, $joins);
+        return new Fetch($sql, $prep, Connect::db(Crud::$key));
     }
 }
