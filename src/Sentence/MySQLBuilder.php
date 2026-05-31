@@ -104,10 +104,12 @@ class MySQLBuilder
 
     public function limit($number, $offset = 0): MySQLBuilder
     {
-        if ($offset > 0) {
-            $this->limit_offset = "{$offset},{$number}";
-        } else {
-            $this->limit_offset = "{$number}";
+        if ($number) {
+            if ($offset > 0) {
+                $this->limit_offset = "{$offset},{$number}";
+            } else {
+                $this->limit_offset = "{$number}";
+            }
         }
         return $this;
     }
