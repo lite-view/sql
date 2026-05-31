@@ -79,11 +79,11 @@ class MySQLBuilder
 
     public function where($condition): MySQLBuilder
     {
-        if ($this->condition === null || $this->condition === '') {
-            $this->condition = $condition;
-        } else {
-            $this->condition .= ' AND ' . $condition;
+        if ($condition === null || $condition === '') {
+            throw new \Exception("Condition can't be empty");
         }
+
+        $this->condition = $condition;
         return $this;
     }
 
@@ -125,19 +125,15 @@ class MySQLBuilder
 
     public function count($fields = '*'): string
     {
+        $sql = ['SELECT', "count($fields)", 'FROM', $this->table];
         if ($this->joins) {
             $join_str = '';
             foreach ($this->joins as $item) {
                 $join_str .= "{$item['way']} JOIN {$item['table']} ON {$item['on']} ";
             }
-            $sql = ['SELECT', "count($fields)", 'FROM', $this->table, $join_str];
-        } else {
-            $sql = ['SELECT', "count($fields)", 'FROM', $this->table];
+            $sql[] = trim($join_str);
         }
-        if ($this->condition !== null && $this->condition !== '') {
-            $sql[] = 'WHERE';
-            $sql[] = $this->condition;
-        }
+        $sql = array_merge($sql, ['WHERE', $this->condition]);
         if ($this->is_for_update) {
             $sql[] = "FOR UPDATE";
         }
