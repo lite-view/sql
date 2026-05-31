@@ -67,7 +67,8 @@ class Fetch
 
     public function all($limit = null): array
     {
-        $sentence = $this->builder->limit($limit)->build();
+        $builder = clone $this->builder;
+        $sentence = $builder->limit($limit)->build();
         return $this->db->prepare($sentence, $this->params)->fetchAll();
     }
 
@@ -82,7 +83,8 @@ class Fetch
 
         $count    = $this->getCountForPagination();
         $offset   = ($page - 1) * $limit;
-        $sentence = $this->builder->limit($limit, $offset)->build();
+        $builder  = clone $this->builder;
+        $sentence = $builder->limit($limit, $offset)->build();
         return [
             'paging' => [
                 'total'       => $count,                   //数据总条数
