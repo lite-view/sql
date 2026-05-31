@@ -15,6 +15,7 @@ class MySQLBuilder
     private $is_for_update = false;
 
     private $condition = null;
+    private $params = [];
 
     public static function insert($table, $data, $mode = 'insert'): MySQLBuilder
     {
@@ -61,6 +62,11 @@ class MySQLBuilder
         return $builder;
     }
 
+    public function getParams(): array
+    {
+        return $this->params;
+    }
+
     public function join($table, $on, $way = 'left'): MySQLBuilder
     {
         $this->joins[] = [
@@ -73,9 +79,6 @@ class MySQLBuilder
 
     public function where($condition): MySQLBuilder
     {
-        if (is_null($condition) || $condition === '') {
-            return $this;
-        }
         if ($this->condition === null || $this->condition === '') {
             $this->condition = $condition;
         } else {
@@ -104,7 +107,7 @@ class MySQLBuilder
 
     public function limit($number, $offset = 0): MySQLBuilder
     {
-        if ($number) {
+        if ($number !== null) {
             if ($offset > 0) {
                 $this->limit_offset = "{$offset},{$number}";
             } else {
@@ -127,9 +130,13 @@ class MySQLBuilder
             foreach ($this->joins as $item) {
                 $join_str .= "{$item['way']} JOIN {$item['table']} ON {$item['on']} ";
             }
-            $sql = ['SELECT', "count($fields)", 'FROM', $this->table, $join_str, 'WHERE', $this->condition];
+            $sql = ['SELECT', "count($fields)", 'FROM', $this->table, $join_str];
         } else {
-            $sql = ['SELECT', "count($fields)", 'FROM', $this->table, 'WHERE', $this->condition];
+            $sql = ['SELECT', "count($fields)", 'FROM', $this->table];
+        }
+        if ($this->condition !== null && $this->condition !== '') {
+            $sql[] = 'WHERE';
+            $sql[] = $this->condition;
         }
         if ($this->is_for_update) {
             $sql[] = "FOR UPDATE";
@@ -180,8 +187,8 @@ class MySQLBuilder
                     if (is_null($val)) {
                         $row_values .= 'NULL,';
                     } else {
-                        $val        = addslashes($val);
-                        $row_values .= "\"$val\",";
+                        $this->params[] = $val;
+                        $row_values     .= "?,";
                     }
                 }
                 $row_values = substr($row_values, 0, -1);
@@ -200,8 +207,8 @@ class MySQLBuilder
             if (is_null($value)) {
                 $values .= 'NULL,';
             } else {
-                $value  = addslashes($value);
-                $values .= "\"$value\",";
+                $this->params[] = $value;
+                $values         .= "?,";
             }
         }
         $fields = substr($fields, 0, -1);
@@ -221,8 +228,8 @@ class MySQLBuilder
             if (is_null($value)) {
                 $set .= "`$key`=NULL,";
             } else {
-                $value = addslashes($value);
-                $set   .= "`$key`=\"$value\",";
+                $this->params[] = $value;
+                $set            .= "`$key`=?,";
             }
         }
         $set = substr($set, 0, -1);

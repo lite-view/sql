@@ -26,8 +26,8 @@ class Cursor
                 return $this->_pdo->lastInsertId();
             }
             return $cnt;
-        } catch (Exception $e) {
-            trigger_error($e->getMessage() . "; the sql was: ====$sql====", E_USER_ERROR);
+        } catch (\Exception $e) {
+            throw new \RuntimeException($e->getMessage() . "; the sql was: ====$sql====", 0, $e);
         }
     }
 
@@ -38,8 +38,8 @@ class Cursor
             $stmt = $this->_pdo->query($sql);
             $stmt->setFetchMode(PDO::FETCH_ASSOC);
             return $stmt;
-        } catch (Exception $e) {
-            trigger_error($e->getMessage() . "; the sql was: ====$sql====", E_USER_ERROR);
+        } catch (\Exception $e) {
+            throw new \RuntimeException($e->getMessage() . "; the sql was: ====$sql====", 0, $e);
         }
     }
 
@@ -53,13 +53,19 @@ class Cursor
                 if (':' != substr($field, 0, 1)) {
                     $field = intval($field) + 1;
                 }
-                $prepare->bindValue($field, $value);
+                $type = is_null($value) ? PDO::PARAM_NULL : (is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                $prepare->bindValue($field, $value, $type);
             }
             $prepare->execute();
             return $prepare;
-        } catch (Exception $e) {
-            trigger_error($e->getMessage() . "; the sql was: ====$sql====", E_USER_ERROR);
+        } catch (\Exception $e) {
+            throw new \RuntimeException($e->getMessage() . "; the sql was: ====$sql====", 0, $e);
         }
+    }
+
+    public function lastInsertId(): string
+    {
+        return $this->_pdo->lastInsertId();
     }
 
     //事务
@@ -70,9 +76,9 @@ class Cursor
             $rst = $func();
             $this->_pdo->commit();
             return $rst;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->_pdo->rollBack();
-            trigger_error($e->getMessage(), E_USER_ERROR);
+            throw new \RuntimeException($e->getMessage(), 0, $e);
         }
     }
 

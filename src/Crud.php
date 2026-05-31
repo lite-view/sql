@@ -29,12 +29,17 @@ class Crud
                 $prep[]  = $v;
             }
             $condition = implode(' AND ', $where);
-            $sql       = SentenceFactory::select($table, 'count(1) as cnt')->where($condition)->build();
-            $exists    = $db->prepare($sql, $prep)->fetchColumn();
-            if (!$exists) {
-                // 使用唯一索引可以避免重复插入
-                return [0, $this->insert($table, array_merge($index, $values), true)];
+
+            // 利用 INSERT IGNORE + 唯一索引（或主键）原子性避免 TOCTOU 竞态
+            $builder = SentenceFactory::insert($table, array_merge($index, $values), 'ignore');
+            $sql     = $builder->build();
+            $params  = $builder->getParams();
+            $stmt    = $db->prepare($sql, $params);
+
+            if ($stmt->rowCount() > 0) {
+                return [0, $db->lastInsertId()];
             }
+
             if ($values) {
                 return [1, $this->update($table, $values, $condition, $prep)];
             }
@@ -44,15 +49,26 @@ class Crud
 
     public function insertAll($table, $data, $needLastInsertId = true)
     {
-        $sql = SentenceFactory::insert($table, $data)->build();
-        return Connect::db($this->key)->exec($sql, $needLastInsertId);
+        $builder = SentenceFactory::insert($table, $data);
+        $sql     = $builder->build();
+        $params  = $builder->getParams();
+        $db      = Connect::db($this->key);
+        $stmt    = $db->prepare($sql, $params);
+        if ($needLastInsertId) {
+            return $db->lastInsertId();
+        }
+        return $stmt->rowCount();
     }
 
     public function insert($table, $data, $ignore = false)
     {
-        $mode = $ignore ? 'ignore' : 'insert';
-        $sql  = SentenceFactory::insert($table, $data, $mode)->build();
-        return Connect::db($this->key)->exec($sql, true); //返回插入ID
+        $mode    = $ignore ? 'ignore' : 'insert';
+        $builder = SentenceFactory::insert($table, $data, $mode);
+        $sql     = $builder->build();
+        $params  = $builder->getParams();
+        $db      = Connect::db($this->key);
+        $db->prepare($sql, $params);
+        return $db->lastInsertId();
     }
 
     public function delete($table, $condition, $prep = [])
@@ -63,8 +79,10 @@ class Crud
 
     public function update($table, $data, $condition, $prep = [])
     {
-        $sql = SentenceFactory::update($table, $data)->where($condition)->build();
-        return Connect::db($this->key)->prepare($sql, $prep)->rowCount();
+        $builder = SentenceFactory::update($table, $data);
+        $sql     = $builder->where($condition)->build();
+        $params  = array_merge($builder->getParams(), $prep);
+        return Connect::db($this->key)->prepare($sql, $params)->rowCount();
     }
 
     public function select($table, $condition, $prep = [], $field = '*')

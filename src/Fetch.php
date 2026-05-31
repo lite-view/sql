@@ -96,8 +96,7 @@ class Fetch
 
     private function getCountForPagination(): int
     {
-        $builder  = clone $this->builder;
-        $sentence = $builder->count();
+        $sentence = $this->builder->count();
         return $this->db->prepare($sentence, $this->params)->fetchColumn();
     }
 
