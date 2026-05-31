@@ -94,14 +94,14 @@ class MySQLBuilder
     public function limit($number, $offset = 0): MySQLBuilder
     {
         if ($offset > 0) {
-            $this->limit_offset = "{$number},{$offset}";
+            $this->limit_offset = "{$offset},{$number}";
         } else {
             $this->limit_offset = "{$number}";
         }
         return $this;
     }
 
-    public function for_update($table): MySQLBuilder
+    public function for_update(): MySQLBuilder
     {
         $this->is_for_update = true;
         return $this;
@@ -116,6 +116,9 @@ class MySQLBuilder
             return $this->update_build();
         }
         if ($this->intent == 'delete') {
+            if (empty($this->condition)) {
+                throw new \Exception('Delete condition is required');
+            }
             return implode(' ', ['DELETE FROM', $this->table, 'WHERE', $this->condition]);
         }
         if (!$this->intent) {
@@ -140,7 +143,7 @@ class MySQLBuilder
         $fields = substr($fields, 0, -1);
         $values = substr($values, 0, -1);
 
-        $sql = [$this->intent, $this->table, $fields, 'VALUES', "($values)"];
+        $sql = [$this->intent, $this->table, "({$fields})", 'VALUES', "({$values})"];
         return implode(' ', $sql);
     }
 
@@ -156,9 +159,12 @@ class MySQLBuilder
             }
         }
         $set = substr($set, 0, -1);
+        if (empty($this->condition)) {
+            throw new \Exception('Update condition is required');
+        }
         $sql = ['UPDATE', $this->table, 'SET', $set, 'WHERE', $this->condition];
         if ($this->order_by) {
-            $sql[] = "ORDER BY {$this->order_by}";
+            $sql[] = 'ORDER BY ' . implode(', ', $this->order_by);
         }
         if ($this->limit_offset) {
             $sql[] = "LIMIT {$this->limit_offset}";
@@ -176,7 +182,11 @@ class MySQLBuilder
             }
         }
 
-        $sql = ['SELECT', $this->fields, 'FROM', $this->table, $join_str, 'WHERE', $this->condition,];
+        $sql = ['SELECT', $this->fields, 'FROM', $this->table, $join_str];
+        if (!empty($this->condition)) {
+            $sql[] = 'WHERE';
+            $sql[] = $this->condition;
+        }
         if ($this->group_by) {
             $sql[] = "GROUP BY {$this->group_by}";
         }
@@ -184,7 +194,7 @@ class MySQLBuilder
             $sql[] = "HAVING {$this->having_condition}";
         }
         if ($this->order_by) {
-            $sql[] = "ORDER BY {$this->order_by}";
+            $sql[] = 'ORDER BY ' . implode(', ', $this->order_by);
         }
         if ($this->limit_offset) {
             $sql[] = "LIMIT {$this->limit_offset}";
