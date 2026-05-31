@@ -33,7 +33,7 @@ class Fetch
 
     public function all($limit = null): array
     {
-        $sentence = $this->builder->limt($limit)->build();
+        $sentence = $this->builder->limit($limit)->build();
         return $this->db->prepare($sentence, $this->params)->fetchAll();
     }
 
