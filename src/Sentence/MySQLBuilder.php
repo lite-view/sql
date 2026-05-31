@@ -24,6 +24,10 @@ class MySQLBuilder
             'replace' => 'REPLACE INTO',
         ];
 
+        if (!isset($_map[$mode])) {
+            throw new \InvalidArgumentException("Invalid insert mode: {$mode}");
+        }
+
         $builder         = new MySQLBuilder();
         $builder->table  = $table;
         $builder->intent = $_map[$mode];
@@ -133,6 +137,9 @@ class MySQLBuilder
 
     private function _build_insert(): string
     {
+        if (empty($this->data)) {
+            throw new \Exception('Insert data cannot be empty');
+        }
         // 多条插入
         reset($this->data);
         $first_key = key($this->data);
@@ -187,6 +194,9 @@ class MySQLBuilder
 
     private function _build_update(): string
     {
+        if (empty($this->data)) {
+            throw new \Exception('Update data cannot be empty');
+        }
         $set = '';
         foreach ($this->data as $key => $value) {
             if (is_null($value)) {

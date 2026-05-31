@@ -221,10 +221,10 @@ $all_pass = assert_throw(function () {
         MySQLBuilder::delete('users')->build();
     }, 'delete without where throws') && $all_pass;
 
-// 21. insert empty data：当前无校验，会生成空字段 SQL（如后续恢复校验可改回 assert_throw）
-// $all_pass = assert_throw(function () {
-//     MySQLBuilder::insert('users', [])->build();
-// }, 'insert empty data throws') && $all_pass;
+// 21. insert empty data
+$all_pass = assert_throw(function () {
+        MySQLBuilder::insert('users', [])->build();
+    }, 'insert empty data throws') && $all_pass;
 
 // 22. exception: update empty data
 $all_pass = assert_throw(function () {

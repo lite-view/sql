@@ -8,63 +8,72 @@ use LiteView\SQL\Sentence\SentenceFactory;
 
 class Crud
 {
-    private static $key;
+    private $key;
 
     public static function db($key = 'mysql'): Crud
     {
-        self::$key = $key;
-        return new self();
+        $instance      = new self();
+        $instance->key = $key;
+        return $instance;
     }
 
     public function updateOrInsert($table, $index, $values = [])
     {
-        $where = [];
-        $prep  = [];
-        foreach ($index as $f => $v) {
-            $where[] = "`$f` = ?";
-            $prep[]  = $v;
-        }
-        $condition = implode(' AND ', $where);
-        $sql       = SentenceFactory::select($table, 'count(1) as cnt');
-        $exists    = Connect::db(Crud::$key)->prepare($sql, $prep)->fetchColumn();
-        if (!$exists) {
-            // 会有幻读的重复插入的风险，使用唯一索引可以避免
-            return [0, $this->insert($table, array_merge($index, $values), true)];
-        }
-        if ($values) {
-            return [1, $this->update($table, $values, $condition, $prep)];
-        }
-        return [-1, -1];
+        $db = Connect::db($this->key);
+
+        return $db->transaction(function () use ($db, $table, $index, $values) {
+            $where = [];
+            $prep  = [];
+            foreach ($index as $f => $v) {
+                $where[] = "`$f` = ?";
+                $prep[]  = $v;
+            }
+            $condition = implode(' AND ', $where);
+            $sql       = SentenceFactory::select($table, 'count(1) as cnt')->where($condition)->build();
+            $exists    = $db->prepare($sql, $prep)->fetchColumn();
+            if (!$exists) {
+                // 使用唯一索引可以避免重复插入
+                return [0, $this->insert($table, array_merge($index, $values), true)];
+            }
+            if ($values) {
+                return [1, $this->update($table, $values, $condition, $prep)];
+            }
+            return [-1, -1];
+        });
     }
 
     public function insertAll($table, $data, $needLastInsertId = true)
     {
-        $sql = SentenceFactory::insert($table, $data);
-        return Connect::db(Crud::$key)->exec($sql, $needLastInsertId);
+        $sql = SentenceFactory::insert($table, $data)->build();
+        return Connect::db($this->key)->exec($sql, $needLastInsertId);
     }
 
     public function insert($table, $data, $ignore = false)
     {
         $mode = $ignore ? 'ignore' : 'insert';
-        $sql  = SentenceFactory::insert($table, $data, $mode);
-        return Connect::db(Crud::$key)->exec($sql, true); //返回插入ID
+        $sql  = SentenceFactory::insert($table, $data, $mode)->build();
+        return Connect::db($this->key)->exec($sql, true); //返回插入ID
     }
 
     public function delete($table, $condition, $prep = [])
     {
-        $sql = SentenceFactory::delete($table, $condition);
-        return Connect::db(Crud::$key)->prepare($sql, $prep)->rowCount();
+        $sql = SentenceFactory::delete($table)->where($condition)->build();
+        return Connect::db($this->key)->prepare($sql, $prep)->rowCount();
     }
 
     public function update($table, $data, $condition, $prep = [])
     {
-        $sql = SentenceFactory::update($table, $data, $condition);
-        return Connect::db(Crud::$key)->prepare($sql, $prep)->rowCount();
+        $sql = SentenceFactory::update($table, $data)->where($condition)->build();
+        return Connect::db($this->key)->prepare($sql, $prep)->rowCount();
     }
 
     public function select($table, $condition, $field = '*', $joins = [], $prep = [])
     {
-        $sql = SentenceFactory::select($table, $condition, $field, $joins);
-        return new Fetch($sql, $prep, Connect::db(Crud::$key));
+        $builder = SentenceFactory::select($table, $field);
+        foreach ($joins as $join) {
+            $builder->join($join['table'], $join['on'], $join['way'] ?? 'left');
+        }
+        $sql = $builder->where($condition)->build();
+        return new Fetch($sql, $prep, Connect::db($this->key));
     }
 }

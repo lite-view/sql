@@ -6,36 +6,40 @@ class SentenceFactory
 {
     private static $driver = 'mysql';
 
-    public static function insert($table, $data, $mode = 'insert'): string
+    public static function setDriver($driver)
+    {
+        self::$driver = $driver;
+    }
+
+    public static function insert($table, $data, $mode = 'insert')
     {
         if (self::$driver === 'mysql') {
-            return MySQLBuilder::insert($table, $data, $mode)->build();
+            return MySQLBuilder::insert($table, $data, $mode);
         }
         throw new \Exception('Unsupported driver');
     }
 
-    public static function update($table, $data, $condition): string
+    public static function update($table, $data)
     {
         if (self::$driver === 'mysql') {
-            return MySQLBuilder::update($table, $data)->where($condition)->build();
+            return MySQLBuilder::update($table, $data);
         }
         throw new \Exception('Unsupported driver');
     }
 
-    public static function select($table, $fields = '*'): string
+    public static function select($table, $fields = '*')
     {
         if (self::$driver === 'mysql') {
-            return MySQLBuilder::select($table, $fields)->build();
+            return MySQLBuilder::select($table, $fields);
         }
         throw new \Exception('Unsupported driver');
     }
 
-    public static function delete($table, $condition): string
+    public static function delete($table)
     {
         if (self::$driver === 'mysql') {
-            return MySQLBuilder::delete($table)->where($condition)->build();
+            return MySQLBuilder::delete($table);
         }
-
         throw new \Exception('Unsupported driver');
     }
 }
