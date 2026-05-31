@@ -53,7 +53,7 @@ function dump($var): void
 // ============================================================
 // 记录测试前最大 ID，用于最后清理
 // ============================================================
-$maxIdBeforeTest = (int) $db->select('test', '1', [], 'max(`id`)')->column();
+$maxIdBeforeTest = (int)$db->select('test', '1', 'max(`id`)')->column();
 
 // ============================================================
 // 1. 测试 insert：插入根节点（pid = 0）
@@ -126,7 +126,7 @@ $batchData = [
         'pid'     => 0,
     ],
 ];
-$lastId = $db->insertAll('test', $batchData, true);
+$lastId    = $db->insertAll('test', $batchData, true);
 assert($lastId > 0, 'Batch insert failed');
 dump("Batch insert last ID: {$lastId}");
 
@@ -134,7 +134,7 @@ dump("Batch insert last ID: {$lastId}");
 // 5. 测试 select + one：查询单条记录
 // ============================================================
 title('5. select -> one()');
-$root = $db->select('test', '`id` = ?', [$rootId], '*')->one();
+$root = $db->select('test', '`id` = ?', '*', [$rootId])->one();
 assert(is_array($root) && $root['id'] == $rootId, 'select one failed');
 dump($root);
 
@@ -142,7 +142,7 @@ dump($root);
 // 6. 测试 select + all：查询列表（带 limit）
 // ============================================================
 title('6. select -> all() with limit');
-$list = $db->select('test', '`pid` = ?', [$rootId], '*')->all(2);
+$list = $db->select('test', '`pid` = ?', '*', [$rootId])->all(2);
 assert(is_array($list) && count($list) <= 2, 'select all failed');
 dump($list);
 
@@ -150,7 +150,7 @@ dump($list);
 // 7. 测试 select + column：统计数量
 // ============================================================
 title('7. select -> column() count');
-$cnt = $db->select('test', '`pid` = ?', [$rootId], 'count(*)')->column();
+$cnt = $db->select('test', '`pid` = ?', 'count(*)', [$rootId])->column();
 assert($cnt >= 2, 'select column count failed');
 dump("Children count of root: {$cnt}");
 
@@ -158,7 +158,7 @@ dump("Children count of root: {$cnt}");
 // 8. 测试 select + paginate：分页查询
 // ============================================================
 title('8. select -> paginate()');
-$page = $db->select('test', '1', [], '*')->paginate(3, 'page', 1);
+$page = $db->select('test', '1')->paginate(3, 'page', 1);
 assert(isset($page['paging']) && isset($page['list']), 'paginate failed');
 assert($page['paging']['pageSize'] == 3, 'paginate pageSize failed');
 dump($page);
@@ -168,7 +168,7 @@ dump($page);
 // ============================================================
 title('9. select + self join (pid references self id)');
 $selfJoin = $db
-    ->select('test t1', 't1.`id` > 0', [], 't1.`id`, t1.`title`, t1.`pid`, t2.`title` as parent_title')
+    ->select('test t1', 't1.`id` > 0', 't1.`id`, t1.`title`, t1.`pid`, t2.`title` as parent_title')
     ->join([
         ['table' => 'test t2', 'on' => 't1.`pid` = t2.`id`', 'way' => 'left'],
     ])
@@ -188,7 +188,7 @@ dump($selfJoin);
 // 10. 测试 select + where 条件：查询某个节点的所有子级
 // ============================================================
 title('10. select children of a specific node');
-$children = $db->select('test', '`pid` = ?', [$rootId], '*')->all();
+$children = $db->select('test', '`pid` = ?', '*', [$rootId])->all();
 assert(count($children) >= 2, 'children query failed');
 dump($children);
 
@@ -203,7 +203,7 @@ $affected = $db->update('test', [
 assert($affected >= 0, 'update failed');
 dump("Updated rows: {$affected}");
 
-$updated = $db->select('test', '`id` = ?', [$rootId], '*')->one();
+$updated = $db->select('test', '`id` = ?', '*', [$rootId])->one();
 assert($updated['title'] === 'Updated Root', 'update verify failed');
 dump($updated);
 
@@ -219,9 +219,9 @@ dump($rst);
 // 13. 测试 updateOrInsert：记录不存在 => 插入
 // ============================================================
 title('13. updateOrInsert (non-existing record -> insert)');
-$maxId = (int) $db->select('test', '1', [], 'max(`id`)')->column();
+$maxId  = (int)$db->select('test', '1', 'max(`id`)')->column();
 $fakeId = $maxId + 9999;
-$rst2 = $db->updateOrInsert('test', ['id' => $fakeId], [
+$rst2   = $db->updateOrInsert('test', ['id' => $fakeId], [
     'content' => 'New from updateOrInsert',
     'addtime' => time(),
     'title'   => 'New Node',
@@ -251,7 +251,7 @@ dump("Deleted rows: {$delCnt}");
 // 15. 测试 select + order：排序查询
 // ============================================================
 title('15. select + order()');
-$ordered = $db->select('test', '1', [], '*')
+$ordered = $db->select('test', '1')
     ->order('id', 'desc')
     ->all(5);
 assert(is_array($ordered), 'order query failed');
@@ -264,7 +264,7 @@ dump($ordered);
 // 16. 测试 select + group + having：分组查询
 // ============================================================
 title('16. select + group() + having()');
-$grouped = $db->select('test', '1', [], 'pid, count(*) as cnt')
+$grouped = $db->select('test', '1', 'pid, count(*) as cnt')
     ->group('pid')
     ->having('cnt > 0')
     ->all();
@@ -275,7 +275,7 @@ dump($grouped);
 // 17. 测试 getRawStatement：查看原始 SQL
 // ============================================================
 title('17. getRawStatement');
-$raw = $db->select('test', '`id` = ? AND `pid` = ?', [$rootId, 0], '*')->getRawStatement(true);
+$raw = $db->select('test', '`id` = ? AND `pid` = ?', '*', [$rootId, 0])->getRawStatement(true);
 assert(is_string($raw) && str_contains($raw, 'PREPARE'), 'getRawStatement failed');
 dump($raw);
 
@@ -296,7 +296,7 @@ dump("Insert ignore result (should be 0): {$ignoreId}");
 // 19. 测试 select + all() 不带 limit 参数：获取全部
 // ============================================================
 title('19. select -> all() without limit');
-$allRows = $db->select('test', '`pid` = ?', [$rootId], '*')->all();
+$allRows = $db->select('test', '`pid` = ?', '*', [$rootId])->all();
 assert(is_array($allRows) && count($allRows) >= 3, 'all without limit failed');
 dump($allRows);
 
@@ -308,8 +308,8 @@ $recursive = $db
     ->select(
         'test c',
         'c.`pid` = ?',
-        [$rootId],
-        'c.`id`, c.`title`, c.`content`, p.`title` as parent_title, p.`content` as parent_content'
+        'c.`id`, c.`title`, c.`content`, p.`title` as parent_title, p.`content` as parent_content',
+        [$rootId]
     )
     ->join([
         ['table' => 'test p', 'on' => 'c.`pid` = p.`id`', 'way' => 'left'],
@@ -325,7 +325,7 @@ dump($recursive);
 // 21. 测试 for_update：锁定查询
 // ============================================================
 title('21. select + for_update()');
-$lockSql = $db->select('test', '`id` = ?', [$rootId], '*')
+$lockSql = $db->select('test', '`id` = ?', '*', [$rootId])
     ->for_update()
     ->getRawStatement(true);
 assert(str_contains($lockSql, 'FOR UPDATE'), 'for_update failed');

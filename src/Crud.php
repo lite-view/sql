@@ -85,7 +85,7 @@ class Crud
         return Connect::db($this->key)->prepare($sql, $params)->rowCount();
     }
 
-    public function select($table, $condition, $prep = [], $field = '*')
+    public function select($table, $condition, $field = '*', $prep = [])
     {
         $builder = SentenceFactory::select($table, $field)->where($condition);
         return new Fetch($builder, $prep, Connect::db($this->key));
