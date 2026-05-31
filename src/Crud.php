@@ -67,12 +67,9 @@ class Crud
         return Connect::db($this->key)->prepare($sql, $prep)->rowCount();
     }
 
-    public function select($table, $condition, $field = '*', $joins = [], $prep = [])
+    public function select($table, $condition, $prep = [], $field = '*')
     {
         $builder = SentenceFactory::select($table, $field)->where($condition);
-        foreach ($joins as $join) {
-            $builder->join($join['table'], $join['on'], $join['way'] ?? 'left');
-        }
         return new Fetch($builder, $prep, Connect::db($this->key));
     }
 }

@@ -1,10 +1,10 @@
 <?php
-/**
- * sql 查询
- */
+
 
 namespace LiteView\SQL;
 
+
+use LiteView\SQL\Sentence\MySQLBuilder;
 
 class Fetch
 {
@@ -12,12 +12,46 @@ class Fetch
     private $params;
     private $db;
 
-    public function __construct($builder, array $params, Cursor $db)
+    public function __construct(MySQLBuilder $builder, array $params, Cursor $db)
     {
         $this->builder = $builder;
         $this->params  = $params;
         $this->db      = $db;
     }
+
+    public function join($tables)
+    {
+        foreach ($tables as $join) {
+            $this->builder->join($join['table'], $join['on'], $join['way'] ?? 'left');
+        }
+        return $this;
+    }
+
+    public function order($field, $way = 'desc')
+    {
+        $this->builder->order($field, $way);
+        return $this;
+    }
+
+    public function having($condition)
+    {
+        $this->builder->having($condition);
+        return $this;
+    }
+
+    public function group($field)
+    {
+        $this->builder->group($field);
+        return $this;
+    }
+
+    public function for_update()
+    {
+        $this->builder->for_update();
+        return $this;
+    }
+
+    //==========================
 
     public function column($column = 0)
     {
