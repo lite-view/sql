@@ -69,7 +69,14 @@ class MySQLBuilder
 
     public function where($condition): MySQLBuilder
     {
-        $this->condition = $condition;
+        if (is_null($condition) || $condition === '') {
+            return $this;
+        }
+        if ($this->condition === null || $this->condition === '') {
+            $this->condition = $condition;
+        } else {
+            $this->condition .= ' AND ' . $condition;
+        }
         return $this;
     }
 
@@ -110,25 +117,56 @@ class MySQLBuilder
     public function build(): string
     {
         if ($this->intent == 'select') {
-            return $this->select_build();
+            return $this->_build_select();
         }
         if ($this->intent == 'update') {
-            return $this->update_build();
+            return $this->_build_update();
         }
         if ($this->intent == 'delete') {
-            if (empty($this->condition)) {
-                throw new \Exception('Delete condition is required');
-            }
-            return implode(' ', ['DELETE FROM', $this->table, 'WHERE', $this->condition]);
+            return $this->_build_delete();
         }
         if (!$this->intent) {
             throw new \Exception('Please set intent');
         }
-        return $this->insert_build();
+        return $this->_build_insert();
     }
 
-    private function insert_build(): string
+    private function _build_insert(): string
     {
+        // 多条插入
+        reset($this->data);
+        $first_key = key($this->data);
+        $is_batch  = is_int($first_key) && is_array(reset($this->data));
+        if ($is_batch) {
+            $first = reset($this->data);
+            if (empty($first)) {
+                throw new \Exception('Insert data row cannot be empty');
+            }
+            $field_keys = array_keys($first);
+            $fields     = implode(',', array_map(function ($k) {
+                return "`$k`";
+            }, $field_keys));
+            $values     = '';
+            foreach ($this->data as $row) {
+                $row_values = '';
+                foreach ($field_keys as $key) {
+                    $val = $row[$key] ?? null;
+                    if (is_null($val)) {
+                        $row_values .= 'NULL,';
+                    } else {
+                        $val        = addslashes($val);
+                        $row_values .= "\"$val\",";
+                    }
+                }
+                $row_values = substr($row_values, 0, -1);
+                $values     .= "({$row_values}),";
+            }
+            $values = substr($values, 0, -1);
+            $sql    = [$this->intent, $this->table, "({$fields})", 'VALUES', $values];
+            return implode(' ', $sql);
+        }
+
+        // 单条插入
         $fields = '';
         $values = '';
         foreach ($this->data as $key => $value) {
@@ -147,7 +185,7 @@ class MySQLBuilder
         return implode(' ', $sql);
     }
 
-    private function update_build(): string
+    private function _build_update(): string
     {
         $set = '';
         foreach ($this->data as $key => $value) {
@@ -159,7 +197,7 @@ class MySQLBuilder
             }
         }
         $set = substr($set, 0, -1);
-        if (empty($this->condition)) {
+        if ($this->condition === null || $this->condition === '') {
             throw new \Exception('Update condition is required');
         }
         $sql = ['UPDATE', $this->table, 'SET', $set, 'WHERE', $this->condition];
@@ -172,7 +210,22 @@ class MySQLBuilder
         return implode(' ', $sql);
     }
 
-    private function select_build()
+    private function _build_delete(): string
+    {
+        if ($this->condition === null || $this->condition === '') {
+            throw new \Exception('Delete condition is required');
+        }
+        $sql = ['DELETE FROM', $this->table, 'WHERE', $this->condition];
+        if ($this->order_by) {
+            $sql[] = 'ORDER BY ' . implode(', ', $this->order_by);
+        }
+        if ($this->limit_offset) {
+            $sql[] = "LIMIT {$this->limit_offset}";
+        }
+        return implode(' ', $sql);
+    }
+
+    private function _build_select(): string
     {
         //书写顺序：SELECT -> FROM -> JOIN -> ON -> WHERE -> GROUP BY -> HAVING -> UNION -> ORDER BY -> LIMIT -> FOR UPDATE
         $join_str = '';
@@ -182,8 +235,16 @@ class MySQLBuilder
             }
         }
 
-        $sql = ['SELECT', $this->fields, 'FROM', $this->table, $join_str];
-        if (!empty($this->condition)) {
+        $fields = is_array($this->fields)
+            ? implode(', ', array_map(function ($f) {
+                return "`$f`";
+            }, $this->fields))
+            : $this->fields;
+        $sql    = ['SELECT', $fields, 'FROM', $this->table];
+        if ($join_str !== '') {
+            $sql[] = rtrim($join_str);
+        }
+        if ($this->condition !== null && $this->condition !== '') {
             $sql[] = 'WHERE';
             $sql[] = $this->condition;
         }
