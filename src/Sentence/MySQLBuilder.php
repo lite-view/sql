@@ -1,0 +1,197 @@
+<?php
+
+namespace LiteView\SQL\Sentence;
+class MySQLBuilder
+{
+    private $table = null;
+    private $fields = null;
+    private $intent = null; // insert,select,update,delete
+    private $data = null;
+    private $joins = [];
+    private $group_by = null;
+    private $order_by = [];
+    private $limit_offset = null;
+    private $having_condition = null;
+    private $is_for_update = false;
+
+    private $condition = null;
+
+    public static function insert($table, $data, $mode = 'insert'): MySQLBuilder
+    {
+        $_map = [
+            'insert'  => 'INSERT INTO',
+            'ignore'  => 'INSERT IGNORE INTO',
+            'replace' => 'REPLACE INTO',
+        ];
+
+        $builder         = new MySQLBuilder();
+        $builder->table  = $table;
+        $builder->intent = $_map[$mode];
+        $builder->data   = $data;
+        return $builder;
+    }
+
+    public static function update($table, $data): MySQLBuilder
+    {
+        $builder         = new MySQLBuilder();
+        $builder->table  = $table;
+        $builder->intent = 'update';
+        $builder->data   = $data;
+        return $builder;
+    }
+
+    public static function select($table, $fields = '*'): MySQLBuilder
+    {
+        $builder         = new MySQLBuilder();
+        $builder->table  = $table;
+        $builder->fields = $fields;
+        $builder->intent = 'select';
+        return $builder;
+    }
+
+    public static function delete($table): MySQLBuilder
+    {
+        $builder         = new MySQLBuilder();
+        $builder->table  = $table;
+        $builder->intent = 'delete';
+        return $builder;
+    }
+
+    public function join($table, $on, $way = 'left'): MySQLBuilder
+    {
+        $this->joins[] = [
+            'table' => $table,
+            'on'    => $on,
+            'way'   => $way,
+        ];
+        return $this;
+    }
+
+    public function where($condition): MySQLBuilder
+    {
+        $this->condition = $condition;
+        return $this;
+    }
+
+    public function group($field): MySQLBuilder
+    {
+        $this->group_by = $field;
+        return $this;
+    }
+
+    public function having($condition): MySQLBuilder
+    {
+        $this->having_condition = $condition;
+        return $this;
+    }
+
+    public function order($field, $way = 'desc'): MySQLBuilder
+    {
+        $this->order_by[] = "{$field} {$way}";
+        return $this;
+    }
+
+    public function limit($number, $offset = 0): MySQLBuilder
+    {
+        if ($offset > 0) {
+            $this->limit_offset = "{$number},{$offset}";
+        } else {
+            $this->limit_offset = "{$number}";
+        }
+        return $this;
+    }
+
+    public function for_update($table): MySQLBuilder
+    {
+        $this->is_for_update = true;
+        return $this;
+    }
+
+    public function build(): string
+    {
+        if ($this->intent == 'select') {
+            return $this->select_build();
+        }
+        if ($this->intent == 'update') {
+            return $this->update_build();
+        }
+        if ($this->intent == 'delete') {
+            return implode(' ', ['DELETE FROM', $this->table, 'WHERE', $this->condition]);
+        }
+        if (!$this->intent) {
+            throw new \Exception('Please set intent');
+        }
+        return $this->insert_build();
+    }
+
+    private function insert_build(): string
+    {
+        $fields = '';
+        $values = '';
+        foreach ($this->data as $key => $value) {
+            $fields .= "`$key`,";
+            if (is_null($value)) {
+                $values .= 'NULL,';
+            } else {
+                $value  = addslashes($value);
+                $values .= "\"$value\",";
+            }
+        }
+        $fields = substr($fields, 0, -1);
+        $values = substr($values, 0, -1);
+
+        $sql = [$this->intent, $this->table, $fields, 'VALUES', "($values)"];
+        return implode(' ', $sql);
+    }
+
+    private function update_build(): string
+    {
+        $set = '';
+        foreach ($this->data as $key => $value) {
+            if (is_null($value)) {
+                $set .= "`$key`=NULL,";
+            } else {
+                $value = addslashes($value);
+                $set   .= "`$key`=\"$value\",";
+            }
+        }
+        $set = substr($set, 0, -1);
+        $sql = ['UPDATE', $this->table, 'SET', $set, 'WHERE', $this->condition];
+        if ($this->order_by) {
+            $sql[] = "ORDER BY {$this->order_by}";
+        }
+        if ($this->limit_offset) {
+            $sql[] = "LIMIT {$this->limit_offset}";
+        }
+        return implode(' ', $sql);
+    }
+
+    private function select_build()
+    {
+        //书写顺序：SELECT -> FROM -> JOIN -> ON -> WHERE -> GROUP BY -> HAVING -> UNION -> ORDER BY -> LIMIT -> FOR UPDATE
+        $join_str = '';
+        if ($this->joins) {
+            foreach ($this->joins as $item) {
+                $join_str .= "{$item['way']} JOIN {$item['table']} ON {$item['on']} ";
+            }
+        }
+
+        $sql = ['SELECT', $this->fields, 'FROM', $this->table, $join_str, 'WHERE', $this->condition,];
+        if ($this->group_by) {
+            $sql[] = "GROUP BY {$this->group_by}";
+        }
+        if ($this->having_condition) {
+            $sql[] = "HAVING {$this->having_condition}";
+        }
+        if ($this->order_by) {
+            $sql[] = "ORDER BY {$this->order_by}";
+        }
+        if ($this->limit_offset) {
+            $sql[] = "LIMIT {$this->limit_offset}";
+        }
+        if ($this->is_for_update) {
+            $sql[] = "FOR UPDATE";
+        }
+        return implode(' ', $sql);
+    }
+}
