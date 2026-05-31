@@ -27,11 +27,12 @@ require __DIR__ . '/../vendor/autoload.php';
 
 
 /*
- CREATE TABLE `test` (
+CREATE TABLE `test` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `content` varchar(1000) NOT NULL,
   `addtime` int(11) DEFAULT NULL,
   `title` varchar(255) DEFAULT NULL,
+  `pid` int(11) NOT NULL DEFAULT '0' COMMENT '无限级关系：父级ID',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=gbk ROW_FORMAT=DYNAMIC COMMENT='说说';
 **/
