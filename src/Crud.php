@@ -4,15 +4,18 @@
 namespace LiteView\SQL;
 
 
-use LiteView\SQL\Sentence\MySQL;
+use LiteView\SQL\Sentence\MySQLBuilder;
+use LiteView\SQL\Sentence\SentenceFactory;
 
 class Crud
 {
     private static $key;
+    private static $builder;
 
-    public static function db($key = 'mysql')
+    public static function db($key = 'mysql'): Crud
     {
-        self::$key = $key;
+        self::$key     = $key;
+        self::$builder = MySQLBuilder::class;
         return new self();
     }
 
@@ -20,11 +23,11 @@ class Crud
     {
         $condition = '';
         foreach ($index as $f => $v) {
-            $v = addslashes($v);
+            $v         = addslashes($v);
             $condition .= "`$f` = \"$v\" AND ";
         }
         $condition = substr($condition, 0, -5);
-        $exists = Connect::db(Crud::$key)->query("SELECT count(1) as cnt FROM $table WHERE $condition")->fetchColumn();
+        $exists    = Connect::db(Crud::$key)->query("SELECT count(1) as cnt FROM $table WHERE $condition")->fetchColumn();
         if (!$exists) {
             // 会有幻读的重复插入的风险，使用唯一索引可以避免
             return [0, $this->insert($table, array_merge($index, $values), true)];
@@ -47,16 +50,21 @@ class Crud
 
     public function delete($table, $condition, $prep = [])
     {
-        return Connect::db(Crud::$key)->prepare(MySQL::delete($table, $condition), $prep)->rowCount();
+        $sql = SentenceFactory::delete($table, $condition);
+        return Connect::db(Crud::$key)->prepare($sql, $prep)->rowCount();
     }
 
     public function update($table, $data, $condition, $prep = [])
     {
+        $sql = SentenceFactory::update($table, $data, $condition);
         return Connect::db(Crud::$key)->prepare(MySQL::update($table, $data, $condition), $prep)->rowCount();
     }
 
     public function select($table, $condition, $field = '*', $joins = [])
     {
+
+        Crud::$builder::select($table, $condition, $field, $joins);
+
         return new GOLBuild(Connect::db(Crud::$key), $table, $condition, $field, $joins);
     }
 }
