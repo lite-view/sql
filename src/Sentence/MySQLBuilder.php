@@ -83,7 +83,11 @@ class MySQLBuilder
             throw new \Exception("Condition can't be empty");
         }
 
-        $this->condition = $condition;
+        if (is_array($condition)) {
+            $this->condition = WhereParser::build($condition);
+        } else {
+            $this->condition = $condition;
+        }
         return $this;
     }
 
