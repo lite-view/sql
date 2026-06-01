@@ -60,9 +60,8 @@ class Crud
         return $stmt->rowCount();
     }
 
-    public function insert($table, $data, $ignore = false)
+    public function insert($table, $data, $mode = 'insert')
     {
-        $mode    = $ignore ? 'ignore' : 'insert';
         $builder = SentenceFactory::insert($table, $data, $mode);
         $sql     = $builder->build();
         $params  = $builder->getParams();
