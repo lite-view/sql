@@ -22,7 +22,11 @@ class Fetch
     public function join($tables)
     {
         foreach ($tables as $join) {
-            $this->builder->join($join['table'], $join['on'], $join['way'] ?? 'left');
+            if (array_keys($join) === range(0, count($join) - 1)) {
+                $this->builder->join($join[0], $join[1], $join[2] ?? 'left');
+            } else {
+                $this->builder->join($join['table'], $join['on'], $join['way'] ?? 'left');
+            }
         }
         return $this;
     }
@@ -67,7 +71,7 @@ class Fetch
 
     public function all($limit = null): array
     {
-        $builder = clone $this->builder;
+        $builder  = clone $this->builder;
         $sentence = $builder->limit($limit)->build();
         return $this->db->prepare($sentence, $this->params)->fetchAll();
     }
